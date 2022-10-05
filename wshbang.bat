@@ -2,23 +2,22 @@
 @echo off
 @setlocal
 
-:: If invoked without any arguments, Print usage information.
-if [%1]==[] (
-    type "%~dp0\help.txt" 1>&2
-    exit /b %errorlevel%
-)
-
 :: Associating through the prompt seems to drop the `%*` at the end of
 :: `shell\open\command` in the registry; this breaks argument passing.
 :: Add it back to HKCU; that doesn't need special privilege.
 :: Notes:
-::   %~nx0      current script filename.ext, no quotes; necessary in case we're
-::              in Powershell, which apparently passes the full pathname as %0
-::   %escaped%  Full pathname, with doubled up backslashes; apparently the
-::              format expected. obvi
-reg add HKEY_CURRENT_USER\Software\Classes\Applications\%~nx0\shell\open\command /ve /d "\"%escaped%\" \"%%1\" %%*" /f > nul
+::   %~nx0  current script filename.ext, no quotes; necessary in case we're
+::          in Powershell, which apparently passes the full pathname as %0
+::   %~f0   Full pathname; still uncertain what he proper format is here...
+reg add HKEY_CURRENT_USER\Software\Classes\Applications\%~nx0\shell\open\command /ve /d "\"%~f0\" \"%%1\" %%*" /f > nul
 if %errorlevel% NEQ 0 (
     echo #! error: Can't register shell command. 1>&2
+    exit /b %errorlevel%
+)
+
+:: If invoked without any arguments, Print usage information.
+if [%1]==[] (
+    type "%~dp0\help.txt" 1>&2
     exit /b %errorlevel%
 )
 
@@ -70,14 +69,13 @@ if %search_path% equ 1 (
         %unix_argument% %*
         exit /b %errorlevel%
     ) else (
-        echo #! error: %unix_command% without argument (executable) 1>&2
+        echo #! error: %unix_command% without executable 1>&2
         exit /b 1057
     )
 )
 
 :: Accept Windows paths directly (probably not going to happen...)
-where %unix_command% > nul 2>&1
-if %errorlevel% EQU 0 (
+if exist %unix_command% (
     %unix_command% %unix_argument% %*
     exit /b %errorlevel%
 )
@@ -86,10 +84,9 @@ if %errorlevel% EQU 0 (
 set map_file="%~dp0\unix_windows.tab"
 if exist %map_file% (
     for /f "tokens=2" %%a in ('findstr /b /c:"%unix_command%	" %map_file% ') do (
-        :: Does it exist on the search path?
-        where %%a > nul 2>&1
-        :: If so, run it!
-        if %errorlevel% EQU 0 (
+        :: Does it exist?
+        if exist %%a (
+            :: If so, run it!
             %%a %unix_argument% %*
             exit /b %errorlevel%
         )
@@ -108,9 +105,8 @@ if not defined windows_command (
     exit /b 7
 )
 
-:: Does *that* exist on the search path?
-where %windows_command% > nul 2>&1
-if %errorlevel% NEQ 0 (
+:: Does *that* exist?
+if not exist %windows_command% (
     echo Not seeing it. Try again?
     goto :prompt_for_executable
 ) else (
