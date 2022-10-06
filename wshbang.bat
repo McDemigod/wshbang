@@ -37,7 +37,7 @@ if "%1" == "-a" (
         )
     ) else (
         :: assoc the extension in %2, ftype too while we're at it.
-        powershell Start-Process cmd.exe '/k "assoc %2=wshbang%2 && ftype wshbang%2=\"^"%~f0\^" \^"%%1\^" %%*"' -Verb runAs
+        powershell Start-Process cmd.exe '/c "assoc %2=wshbang%2 && ftype wshbang%2=\"^"%~f0\^" \^"%%1\^" %%*"' -Verb runAs
         if %errorlevel% NEQ 0 (
             echo #! error: Can't associate with filetype. 1>&2
             exit /b %errorlevel%
