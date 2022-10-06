@@ -31,11 +31,17 @@ if "%1" == "-a" (
     if [%2]==[] (
         :: No extensions given, just do ftype:
         powershell.exe -command Start-Process -Verb runAs cmd.exe '/c" ftype wshbang=%~f0 %%1 %%*"'
-        exit /b %errorlevel%
+        if %errorlevel% NEQ 0 (
+            echo #! error: Can't associate with filetype. 1>&2
+            exit /b %errorlevel%
+        )
     ) else (
         :: assoc the extension in %2, ftype too while we're at it.
         powershell Start-Process cmd.exe '/k "assoc %2=wshbang%2 && ftype wshbang%2=\"^"%~f0\^" \^"%%1\^" %%*"' -Verb runAs
-        exit /b %errorlevel%
+        if %errorlevel% NEQ 0 (
+            echo #! error: Can't associate with filetype. 1>&2
+            exit /b %errorlevel%
+        )
     )
 )
 
